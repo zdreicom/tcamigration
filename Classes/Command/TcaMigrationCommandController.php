@@ -14,6 +14,7 @@ namespace TYPO3\tcamigration\Command;
  * The TYPO3 project - inspiring people to share!
  */
 
+use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Mvc\Controller\CommandController;
 
 /**
@@ -51,7 +52,31 @@ class TcaMigrationCommandController extends CommandController
      */
     public function migrateTable($extension, $tables)
     {
+        $tables = GeneralUtility::trimExplode(',', $tables);
+        foreach ($tables as $table) {
+            $this->backupTcaForTable($table);
+            $this->unsetTcaForTable($table);
+        }
 
+        
+    }
+
+    /**
+     * Backup of a given tables TCA to $this->tcaBackup
+     *
+     * @param string $table The table to backup
+     */
+    protected function backupTcaForTable($table) {
+        $this->tcaBackup[$table] = $GLOBALS['TCA'][$table];
+    }
+
+    /**
+     * Unsets the TCA for a given table
+     *
+     * @param string $table The table for which to unset the TCA
+     */
+    protected function unsetTcaForTable($table) {
+        unset($GLOBALS['TCA'][$table]);
     }
 
 }
