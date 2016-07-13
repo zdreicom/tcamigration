@@ -41,13 +41,19 @@ class TcaMigrationCommandController extends CommandController
     protected $collectedMessages = [];
 
     /**
+     * @var array
+     */
+    protected $filesWritten = [];
+
+    /**
      * Migrates the TCA of tables of a given extension
      *
      * 1. Unset all TCA of given tables (save backup in $this->oldTca)
      * 2. Scan for potential TCA files and reevaluate them
      * 3. Migrate each table
      * 4. Write new TCA file to Configuration/TCA/<table>.php
-     * 5. Dump collected messages
+     * 5. Restore TCA from $this->oldTCA
+     * 6. Dump collected messages
      *
      * @param string $extension The extension key of the extension to work on
      * @param string $tables Comma-separated list of tables to migrate
@@ -65,6 +71,7 @@ class TcaMigrationCommandController extends CommandController
 
         foreach ($tables as $table) {
             $newTCA = $this->migrateTcaForTable($table);
+            $this->writeNewTcaFileForTableInExtension($extension, $table, $newTCA);
         }
 
         return $this->prepareMessages();
@@ -114,9 +121,7 @@ class TcaMigrationCommandController extends CommandController
     protected function loadBaseTcaOfExtension($extension, array $tables)
     {
         /** @var Package[] $activePackages */
-        $activePackages = GeneralUtility::makeInstance(PackageManager::class)->getActivePackages();
-        // Limit to single extension
-        $package = $activePackages[$extension];
+        $package = GeneralUtility::makeInstance(PackageManager::class)->getPackage($extension);
 
         // First load "full table" files from Configuration/TCA
         $tcaConfigurationDirectory = $package->getPackagePath() . 'Configuration/TCA';
@@ -206,13 +211,46 @@ class TcaMigrationCommandController extends CommandController
         return $fakeGlobals['TCA'][$table];
     }
 
+    /**
+     * Writes the new TCA file for a given table in a given extension
+     *
+     * @param string $extension The extension to work on
+     * @param string $table The name of the table
+     * @param array $newTca The array of the new TCA for the given table
+     */
+    protected function writeNewTcaFileForTableInExtension($extension, $table, array $newTca)
+    {
+        /** @var Package[] $activePackages */
+        $package = GeneralUtility::makeInstance(PackageManager::class)->getPackage($extension);
 
+        // Get tca configuration directory
+        $tcaConfigurationDirectory = $package->getPackagePath() . 'Configuration/TCA';
+        if (!is_dir($tcaConfigurationDirectory)) {
+            $result = GeneralUtility::mkdir($tcaConfigurationDirectory);
+            if (!$result) {
+                $this->outputLine('Failed to create directory: \"' . $tcaConfigurationDirectory . '\"');
+                $this->quit(99);
+            }
+        }
+
+        $newFileContent = '<?php' . LF . 'return ';
+        $newFileContent .= var_export($newTca, true);
+        $fileName = $tcaConfigurationDirectory . '/' . $table . '.php';
+        GeneralUtility::writeFile($fileName, $newFileContent);
+        $this->filesWritten[] = $fileName;
+    }
+
+    /**
+     * Creates the message string for the terminal
+     *
+     * @return string The string of messages concatenated with LF
+     */
     protected function prepareMessages()
     {
-        $messages = '';
-        if (!empty($this->collectedMessages)) {
-            $messages = implode(LF, $this->collectedMessages);
-        }
+        $this->collectedMessages[] = '';
+        $this->collectedMessages[] = 'New files written:';
+        $this->collectedMessages = array_merge($this->collectedMessages, $this->filesWritten);
+        $messages = implode(LF, $this->collectedMessages);
         return $messages;
     }
 
