@@ -148,7 +148,7 @@ class TcaMigrationCommandController extends CommandController
      * @param array $tables The array of tables to consider
      */
     protected function loadExtTablesOfExtension($extension, array $tables) {
-        $_EXTKEY = $extension;
+        $GLOBALS['_EXTKEY'] = $extension;
         global $_EXTKEY;
 
         global $T3_SERVICES, $T3_VAR, $TYPO3_CONF_VARS;
@@ -167,7 +167,6 @@ class TcaMigrationCommandController extends CommandController
                 if (!isset($TCA[$tableName]['columns'])) {
                     $columnsConfigFile = $TCA[$tableName]['ctrl']['dynamicConfigFile'];
                     if ($columnsConfigFile) {
-                        GeneralUtility::logDeprecatedFunction();
                         if (GeneralUtility::isAbsPath($columnsConfigFile)) {
                             include($columnsConfigFile);
                         } else {
