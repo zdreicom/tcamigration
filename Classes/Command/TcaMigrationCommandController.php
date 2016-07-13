@@ -236,6 +236,7 @@ class TcaMigrationCommandController extends CommandController
 
         $newFileContent = '<?php' . LF . 'return ';
         $newFileContent .= var_export($newTca, true);
+        $newFileContent .= ';' . LF;
         $fileName = $tcaConfigurationDirectory . '/' . $table . '.php';
         GeneralUtility::writeFile($fileName, $newFileContent);
         $this->filesWritten[] = $fileName;
