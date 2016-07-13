@@ -73,6 +73,7 @@ class TcaMigrationCommandController extends CommandController
             $newTCA = $this->migrateTcaForTable($table);
             $this->writeNewTcaFileForTableInExtension($extension, $table, $newTCA);
         }
+        $this->restoreOriginalTcaForTables($tables);
 
         return $this->prepareMessages();
     }
@@ -238,6 +239,19 @@ class TcaMigrationCommandController extends CommandController
         $fileName = $tcaConfigurationDirectory . '/' . $table . '.php';
         GeneralUtility::writeFile($fileName, $newFileContent);
         $this->filesWritten[] = $fileName;
+    }
+
+    /**
+     * Restores the original TCA from backup in $this->tcaBackup
+     *
+     * @param array $tables The list of tables to restore
+     */
+    protected function restoreOriginalTcaForTables(array $tables)
+    {
+        foreach ($tables as $table) {
+            unset($GLOBALS['TCA'][$table]);
+            $GLOBALS['TCA'][$table] = $this->tcaBackup[$table];
+        }
     }
 
     /**
