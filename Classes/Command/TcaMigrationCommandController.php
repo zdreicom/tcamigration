@@ -51,6 +51,7 @@ class TcaMigrationCommandController extends CommandController
      *
      * @param string $extension The extension key of the extension to work on
      * @param string $tables Comma-separated list of tables to migrate
+     * @return string The list of applied migrations
      * @cli
      */
     public function migrateTableCommand($extension, $tables)
@@ -60,9 +61,13 @@ class TcaMigrationCommandController extends CommandController
             $this->backupTcaForTable($table);
             $this->unsetTcaForTable($table);
         }
-
         $this->scanAndEvaluateExtensionTcaFiles($extension, $tables);
 
+        foreach ($tables as $table) {
+            $newTCA = $this->migrateTcaForTable($table);
+        }
+
+        return $this->prepareMessages();
     }
 
     /**
@@ -147,7 +152,8 @@ class TcaMigrationCommandController extends CommandController
      * @param string $extension The name of the extension
      * @param array $tables The array of tables to consider
      */
-    protected function loadExtTablesOfExtension($extension, array $tables) {
+    protected function loadExtTablesOfExtension($extension, array $tables)
+    {
         $GLOBALS['_EXTKEY'] = $extension;
         global $_EXTKEY;
 
@@ -157,7 +163,9 @@ class TcaMigrationCommandController extends CommandController
 
         $extensionInformation = $GLOBALS['TYPO3_LOADED_EXT'][$extension];
         // Load each ext_tables.php file of loaded extensions
-        if ((is_array($extensionInformation) || $extensionInformation instanceof \ArrayAccess) && $extensionInformation['ext_tables.php']) {
+        if ((is_array($extensionInformation) || $extensionInformation instanceof \ArrayAccess)
+            && $extensionInformation['ext_tables.php']
+        ) {
             // $_EXTKEY and $_EXTCONF are available in ext_tables.php
             // and are explicitly set in cached file as well
             $_EXTCONF = $GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf'][$_EXTKEY];
@@ -179,6 +187,33 @@ class TcaMigrationCommandController extends CommandController
                 }
             }
         }
+    }
+
+    /**
+     * Migrates the TCA of a given table
+     *
+     * @param string $table The table to migrate
+     * @return array The new TCA for given table
+     */
+    protected function migrateTcaForTable($table)
+    {
+        $fakeGlobals = ['TCA'];
+        $fakeGlobals['TCA'][$table] = $GLOBALS['TCA'][$table];
+        /** @var \TYPO3\CMS\Core\Migrations\TcaMigration $tcaMigration */
+        $tcaMigration = GeneralUtility::makeInstance(\TYPO3\CMS\Core\Migrations\TcaMigration::class);
+        $fakeGlobals['TCA'] = $tcaMigration->migrate($fakeGlobals['TCA']);
+        $this->collectedMessages = array_merge($this->collectedMessages, $tcaMigration->getMessages());
+        return $fakeGlobals['TCA'][$table];
+    }
+
+
+    protected function prepareMessages()
+    {
+        $messages = '';
+        if (!empty($this->collectedMessages)) {
+            $messages = implode(LF, $this->collectedMessages);
+        }
+        return $messages;
     }
 
 }
