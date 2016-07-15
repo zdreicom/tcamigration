@@ -64,8 +64,16 @@ class TcaMigrationCommandController extends CommandController
     {
         $tables = GeneralUtility::trimExplode(',', $tables);
         foreach ($tables as $table) {
-            $this->backupTcaForTable($table);
-            $this->unsetTcaForTable($table);
+            try {
+                $this->backupTcaForTable($table);
+                $this->unsetTcaForTable($table);
+            } catch (\UnexpectedValueException $e) {
+                if ($e->getCode() === 1468586344) {
+                    unset($tables[$table]);
+                    $this->collectedMessages[] = $e->getMessage();
+                    continue;
+                }
+            }
         }
         $this->scanAndEvaluateExtensionTcaFiles($extension, $tables);
 
@@ -82,10 +90,15 @@ class TcaMigrationCommandController extends CommandController
      * Backup of a given tables TCA to $this->tcaBackup
      *
      * @param string $table The table to backup
+     * @throws \UnexpectedValueException
      */
     protected function backupTcaForTable($table)
     {
-        $this->tcaBackup[$table] = $GLOBALS['TCA'][$table];
+        if (isset($GLOBALS['TCA'][$table]) && is_array($GLOBALS['TCA'][$table])) {
+            $this->tcaBackup[$table] = $GLOBALS['TCA'][$table];
+        } else {
+            throw new \UnexpectedValueException('No such table in tca: ' . $table, 1468586344);
+        }
     }
 
     /**
