@@ -63,13 +63,13 @@ class TcaMigrationCommandController extends CommandController
     public function migrateTableCommand($extension, $tables)
     {
         $tables = GeneralUtility::trimExplode(',', $tables);
-        foreach ($tables as $table) {
+        foreach ($tables as $key => $table) {
             try {
                 $this->backupTcaForTable($table);
                 $this->unsetTcaForTable($table);
             } catch (\UnexpectedValueException $e) {
                 if ($e->getCode() === 1468586344) {
-                    unset($tables[$table]);
+                    unset($tables[$key]);
                     $this->collectedMessages[] = $e->getMessage();
                     continue;
                 }
@@ -279,7 +279,7 @@ class TcaMigrationCommandController extends CommandController
         $this->collectedMessages[] = 'New files written:';
         $this->collectedMessages = array_merge($this->collectedMessages, $this->filesWritten);
         $messages = implode(LF, $this->collectedMessages);
-        return $messages;
+        return $messages . LF;
     }
 
 }
