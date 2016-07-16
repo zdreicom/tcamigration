@@ -1,5 +1,5 @@
 <?php
-namespace TYPO3\tcamigration\Command;
+namespace Z3\tcamigration\Command;
 
 /*
  * This file is part of the TYPO3 CMS project.
