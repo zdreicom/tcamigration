@@ -143,19 +143,42 @@ class TcaMigrationCommandController extends CommandController
             $files = scandir($tcaConfigurationDirectory);
             foreach ($files as $file) {
                 if (
-                    is_file($tcaConfigurationDirectory . '/' . $file)
-                    && ($file !== '.')
+                    ($file !== '.')
                     && ($file !== '..')
+                    && is_file($tcaConfigurationDirectory . '/' . $file)
                     && (substr($file, -4, 4) === '.php')
                 ) {
-                    $tcaOfTable = require($tcaConfigurationDirectory . '/' . $file);
+                    $tcaOfTable = require $tcaConfigurationDirectory . '/' . $file;
                     if (is_array($tcaOfTable)) {
                         // TCA table name is filename without .php suffix, eg 'sys_notes', not 'sys_notes.php'
                         $tcaTableName = substr($file, 0, -4);
                         // Limit to given tables
-                        if (in_array($tcaTableName, $tables)) {
+                        if (in_array($tcaTableName, $tables, true)) {
                             $GLOBALS['TCA'][$tcaTableName] = $tcaOfTable;
                         }
+                    }
+                }
+            }
+
+            /* @todo Add automatic loading of related tca */
+            $tcaOverridesDirectory = $tcaConfigurationDirectory . '/Overrides';
+            if (is_dir($tcaOverridesDirectory)) {
+                $overrideFiles = scandir($tcaOverridesDirectory);
+                foreach ($overrideFiles as $file) {
+                    if (
+                        ($file !== '.')
+                        && ($file !== '..')
+                        && is_file($tcaOverridesDirectory . '/' . $file)
+                        && (substr($file, -4, 4) === '.php')
+                    ) {
+                        $tcaTableName = substr($file, 0, -4);
+                        if (!isset($GLOBALS['TCA'][$tcaTableName])) {
+                            $GLOBALS['TCA'][$tcaTableName] = [];
+                        }
+                        if (!isset($GLOBALS['TCA'][$tcaTableName]['columns'])) {
+                            $GLOBALS['TCA'][$tcaTableName]['columns'] = [];
+                        }
+                        require $tcaOverridesDirectory . '/' . $file;
                     }
                 }
             }
@@ -170,6 +193,7 @@ class TcaMigrationCommandController extends CommandController
      *
      * @param string $extension The name of the extension
      * @param array $tables The array of tables to consider
+     * @throws \RuntimeException
      */
     protected function loadExtTablesOfExtension($extension, array $tables)
     {
