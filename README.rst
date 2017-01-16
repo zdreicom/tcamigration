@@ -11,7 +11,7 @@ Check syntax with ``php typo3/cli_dispatch.phpsh extbase help tcamigration:migra
 After migration
 ---------------
 
-* Delete ``ctrl/dynamicConfigFile``
+* Delete ``ctrl|dynamicConfigFile`` in each TCA file
 * Delete **old** files in ``Configuration/TCA``
 * Change the timestamps on key ``lower`` back to ``mktime(0, 0, 0, date('m'), date('d'), date('Y'))``
 * Check for absolute paths and convert to relative paths if needed (``EXT:``)
