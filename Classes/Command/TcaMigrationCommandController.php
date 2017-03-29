@@ -1,4 +1,5 @@
 <?php
+
 namespace Z3\tcamigration\Command;
 
 /*
@@ -245,6 +246,7 @@ class TcaMigrationCommandController extends CommandController
         /** @var \TYPO3\CMS\Core\Migrations\TcaMigration $tcaMigration */
         $tcaMigration = GeneralUtility::makeInstance(\TYPO3\CMS\Core\Migrations\TcaMigration::class);
         $fakeGlobals['TCA'] = $tcaMigration->migrate($fakeGlobals['TCA']);
+        $fakeGlobals['TCA'] = $this->postProcessTcaForTable($fakeGlobals['TCA'], $table);
         $this->collectedMessages = array_merge($this->collectedMessages, $tcaMigration->getMessages());
         return $fakeGlobals['TCA'][$table];
     }
@@ -274,6 +276,13 @@ class TcaMigrationCommandController extends CommandController
         $newFileContent = '<?php' . LF . 'return ';
         $newFileContent .= var_export($newTca, true);
         $newFileContent .= ';' . LF;
+
+        $newFileContent = str_replace(
+            '\'lower\' => \'###lowerbound###\'',
+            '\'lower\' => mktime(0, 0, 0, date(\'m\'), date(\'d\'), date(\'Y\'))',
+            $newFileContent
+        );
+
         $fileName = $tcaConfigurationDirectory . '/' . $table . '.php';
         GeneralUtility::writeFile($fileName, $newFileContent);
         $this->filesWritten[] = $fileName;
@@ -304,6 +313,26 @@ class TcaMigrationCommandController extends CommandController
         $this->collectedMessages = array_merge($this->collectedMessages, $this->filesWritten);
         $messages = implode(LF, $this->collectedMessages);
         return $messages . LF;
+    }
+
+    /**
+     * Post process the TCA to remove some common quirks
+     *
+     * @param array $tca The new TCA
+     * @param string $table The table name to process
+     * @return array The new TCA
+     */
+    protected function postProcessTcaForTable(array $tca, string $table): array
+    {
+        // Remove dynamicConfigFile
+        unset($tca[$table]['ctrl']['dynamicConfigFile']);
+        // Reset lower bound with marker
+        foreach ($tca[$table]['columns'] as $key => $column) {
+            if (isset($column['config']['range']['lower'])) {
+                $tca[$table]['columns'][$key]['config']['range']['lower'] = '###lowerbound###';
+            }
+        }
+        return $tca;
     }
 
 }
