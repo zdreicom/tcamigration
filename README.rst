@@ -11,9 +11,7 @@ Check syntax with ``php typo3/cli_dispatch.phpsh extbase help tcamigration:migra
 After migration
 ---------------
 
-* Delete ``ctrl|dynamicConfigFile`` in each TCA file
 * Delete **old** files in ``Configuration/TCA``
-* Change the timestamps on key ``lower`` back to ``mktime(0, 0, 0, date('m'), date('d'), date('Y'))``
 * Check for absolute paths and convert to relative paths if needed (``EXT:``)
 * Remove third parameter on all ``\TYPO3\CMS\Core\Utility\ExtensionManagementUtility::addTCAcolumns`` calls
 * Check the contents of the files ``ext_localconf.php`` and ``ext_tables.php`` and move stuff as needed (e.g. to ``Configuration/TCA/Overrides``)
